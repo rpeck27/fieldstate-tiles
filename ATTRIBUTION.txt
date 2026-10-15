@@ -17,4 +17,4 @@ buildings.pmtiles
   Building heights (h) are stylised from footprint area, not measured.
 
 fonts/  (Noto Sans glyph ranges, protomaps/basemaps-assets) — SIL Open Font License 1.1
-sprites/ (protomaps/basemaps-assets, v4) — see LICENSES/sprites
+sprites/ (protomaps/basemaps-assets, v4) — derived from tangrams/icons, MIT License; see LICENSES/sprites
