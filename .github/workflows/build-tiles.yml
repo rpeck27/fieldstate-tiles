@@ -1,0 +1,131 @@
+# Build tiles: the one-time (later monthly) town-map tile build.
+#
+# This file lives in sie-engine at scripts/tiles/.github/workflows/ and is
+# copied, with the rest of scripts/tiles, to the root of the PUBLIC repo
+# rpeck27/fieldstate-tiles. GitHub runs it only there: standard runners are
+# free for public repositories, so this costs no Actions minutes. GitHub
+# ignores a .github folder that is not at a repository's root, so it never
+# runs in sie-engine.
+#
+# Manual only (Actions → Build tiles → Run workflow). Writes to the R2 bucket
+# fieldstate-tiles with a token scoped to that one bucket, stored as three
+# repository secrets: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY.
+# Each layer is its own job (each under GitHub's 6-hour job limit) and is
+# uploaded only after its own owner-field / license / size check passes.
+name: Build tiles
+
+on:
+  workflow_dispatch:
+    inputs:
+      layers:
+        description: "Which layers"
+        type: choice
+        default: all
+        options: [all, assets, basemap, parcels, buildings]
+      upload:
+        description: "Upload to R2 (off = build and check only)"
+        type: boolean
+        default: true
+      basemap_build:
+        description: "Protomaps build date YYYYMMDD (blank = yesterday)"
+        type: string
+        default: ""
+      basemap_maxzoom:
+        description: "Basemap max zoom (14 roughly halves its size)"
+        type: string
+        default: "15"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-tiles
+  cancel-in-progress: false
+
+env:
+  UPLOAD: ${{ inputs.upload && '1' || '0' }}
+  R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+  R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+  R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+  R2_BUCKET: fieldstate-tiles
+  BASEMAP_BUILD: ${{ inputs.basemap_build }}
+  BASEMAP_MAXZOOM: ${{ inputs.basemap_maxzoom }}
+  # Not under a dot-folder: upload-artifact v4 skips hidden paths.
+  WORK: ${{ github.workspace }}/work
+  OUT: ${{ github.workspace }}/out
+
+jobs:
+  assets:
+    if: inputs.layers == 'all' || inputs.layers == 'assets'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq rclone
+      - run: pip install -q requests
+      - run: bash build.sh assets
+
+  basemap:
+    if: inputs.layers == 'all' || inputs.layers == 'basemap'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+      - run: bash setup-tools.sh
+      - run: pip install -q requests
+      - run: bash build.sh basemap
+
+  parcels-fetch:
+    if: inputs.layers == 'all' || inputs.layers == 'parcels'
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      # One shard at a time: NC OneMap sees one polite client, never four.
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        shard: ["1/4", "2/4", "3/4", "4/4"]
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q requests
+      - run: bash build.sh parcels-fetch
+        env:
+          SHARD: ${{ matrix.shard }}
+      - name: Keep the owner-free county files for the tiles job
+        uses: actions/upload-artifact@v4
+        with:
+          name: parcels-${{ strategy.job-index }}
+          path: work/parcels/county/
+          if-no-files-found: error
+          retention-days: 2
+          compression-level: 6
+
+  parcels-tiles:
+    needs: parcels-fetch
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: parcels-*
+          merge-multiple: true
+          path: work/parcels/county/
+      - run: bash setup-tools.sh
+      - run: bash build.sh parcels-tiles
+
+  buildings:
+    if: inputs.layers == 'all' || inputs.layers == 'buildings'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+      - run: bash setup-tools.sh
+      - run: pip install -q requests
+      - run: bash build.sh buildings

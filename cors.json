@@ -1,0 +1,14 @@
+[
+  {
+    "AllowedOrigins": [
+      "https://fieldstate.org",
+      "https://www.fieldstate.org",
+      "https://fieldstate.pages.dev",
+      "http://localhost:3000"
+    ],
+    "AllowedMethods": ["GET", "HEAD"],
+    "AllowedHeaders": ["range", "if-match"],
+    "ExposeHeaders": ["etag", "content-range", "content-length"],
+    "MaxAgeSeconds": 86400
+  }
+]

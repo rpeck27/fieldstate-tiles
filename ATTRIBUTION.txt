@@ -1,0 +1,20 @@
+tiles.fieldstate.org — data sources and licenses
+
+basemap.pmtiles
+  Protomaps basemap build of OpenStreetMap data.
+  © OpenStreetMap contributors. Open Database License (ODbL) 1.0, Produced Work.
+  https://www.openstreetmap.org/copyright
+
+parcels.pmtiles
+  Parcel boundaries: North Carolina counties via NC OneMap (NC1Map_Parcels).
+  Attributes kept: parcel number (parno), county name, GIS acres. No owner,
+  mailing, sale or value field is requested or published.
+  NC OneMap: free to use without restriction; county data stewards are the
+  authoritative source. Boundaries are tax-parcel representations, not surveys.
+
+buildings.pmtiles
+  Microsoft US Building Footprints (North Carolina). ODbL 1.0.
+  Building heights (h) are stylised from footprint area, not measured.
+
+fonts/  (Noto Sans glyph ranges, protomaps/basemaps-assets) — SIL Open Font License 1.1
+sprites/ (protomaps/basemaps-assets, v4) — see LICENSES/sprites
