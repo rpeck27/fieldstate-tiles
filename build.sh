@@ -27,7 +27,7 @@ OUT="${OUT:-$REPO/.tiles/out}"
 BASEMAP_BUILD="${BASEMAP_BUILD:-$(date -u -d 'yesterday' +%Y%m%d 2>/dev/null || date -u -v-1d +%Y%m%d)}"
 BASEMAP_MAXZOOM="${BASEMAP_MAXZOOM:-15}"
 BASEMAP_URL="https://build.protomaps.com/${BASEMAP_BUILD}.pmtiles"
-BUILDINGS_URL="${BUILDINGS_URL:-https://usbuildingdata.blob.core.windows.net/usbuildings-v2/NorthCarolina.geojson.zip}"
+BUILDINGS_URL="${BUILDINGS_URL:-https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/NorthCarolina.geojson.zip}"
 ASSETS_REPO="https://github.com/protomaps/basemaps-assets.git"
 ASSETS_REF="${ASSETS_REF:-main}"
 UA="FieldstateBot/1.0 (+https://fieldstate.org/bot; bots@fieldstate.org)"
@@ -137,18 +137,6 @@ step_assets() {
     find "$WORK/basemaps-assets/fonts" -maxdepth 2 -type f \( -iname '*licen*' -o -iname '*ofl*' \) -exec cp {} "$OUT/LICENSES/fonts/" \;
     find "$WORK/basemaps-assets/sprites" -maxdepth 2 -type f -iname '*licen*' -exec cp {} "$OUT/LICENSES/sprites/" \;
     find "$WORK/basemaps-assets" -maxdepth 1 -type f -iname '*licen*' -exec cp {} "$OUT/LICENSES/" \;
-    # sprites/ ships no license file of its own: basemaps-assets' README says
-    # the sprites derive from MIT-licensed tangrams/icons. Publish that README
-    # line's source and the upstream MIT license text beside the sprites.
-    if [ -z "$(ls -A "$OUT/LICENSES/sprites")" ]; then
-      grep -i -A8 '^## License' "$WORK/basemaps-assets/README.md" > "$OUT/LICENSES/sprites/SOURCE.txt"
-      grep -qi 'tangrams/icons' "$OUT/LICENSES/sprites/SOURCE.txt" \
-        || { echo "sprites: basemaps-assets README no longer names tangrams/icons; check the license by hand."; exit 1; }
-      rm -rf "$WORK/tangrams-icons"
-      git clone -q --depth 1 --filter=blob:none --sparse https://github.com/tangrams/icons.git "$WORK/tangrams-icons"
-      git -C "$WORK/tangrams-icons" sparse-checkout set --no-cone /LICENSE.md
-      cp "$WORK/tangrams-icons/LICENSE.md" "$OUT/LICENSES/sprites/tangrams-icons-LICENSE.md"
-    fi
   fi
   cp "$HERE/ATTRIBUTION.txt" "$OUT/ATTRIBUTION.txt"
   printf 'basemap_build=%s\nbasemap_maxzoom=%s\nbuilt_at=%s\n' \
